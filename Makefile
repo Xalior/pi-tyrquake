@@ -40,10 +40,11 @@ IMAGE_rpi3 = kernel8.img
 IMAGE_rpi4 = kernel8-rpi4.img
 IMAGE_rpi5 = kernel_2712.img
 
-.PHONY: deps kernels verify netboot card clean-boards $(BOARDS)
-.PHONY: $(addprefix deps-,$(BOARDS))
+.PHONY: deps kernels rebuild verify netboot card clean-boards $(BOARDS)
+.PHONY: $(addprefix deps-,$(BOARDS)) $(addprefix rebuild-,$(BOARDS))
 
 deps:
+	+@$(NOT_DRY_RUN)
 	$(MAKE) -C circle-libsdl2 deps
 
 # One board's dependencies: its own circle-stdlib world and the shim archive
@@ -54,10 +55,12 @@ deps:
 # to phony targets — it would quietly answer "nothing to be done" and leave
 # the world unbuilt.
 $(addprefix deps-,$(BOARDS)): deps-%:
+	+@$(NOT_DRY_RUN)
 	$(MAKE) -C circle-libsdl2 world BOARD=$*
 	$(MAKE) -C circle-libsdl2 libSDL2-$*.a BOARD=$*
 
 $(BOARDS): check-toolchain
+	+@$(NOT_DRY_RUN)
 	$(MAKE) -C host RAPI_BOARD=$@
 
 # All three at once. Each sub-make owns a different world and a different
@@ -69,13 +72,34 @@ $(BOARDS): check-toolchain
 # success, and the truth-gate would then pass the board's PREVIOUS image,
 # still on disk.
 kernels: check-toolchain
+	+@$(NOT_DRY_RUN)
 	@pids=; fail=0; \
 	for b in $(BOARDS); do $(MAKE) -C host RAPI_BOARD=$$b & pids="$$pids $$!"; done; \
 	for p in $$pids; do wait $$p || fail=1; done; \
 	exit $$fail
 
+# One board from nothing: its build tree is removed before the build, so no
+# object can be inherited from a previous one. Written as a static pattern rule
+# over the board list for the same reason deps-% is.
+$(addprefix rebuild-,$(BOARDS)): rebuild-%: check-toolchain
+	+@$(NOT_DRY_RUN)
+	$(MAKE) -C host RAPI_BOARD=$* rebuild
+
+# All three from nothing, in parallel, waited for by PID exactly as kernels is.
+rebuild: check-toolchain
+	+@$(NOT_DRY_RUN)
+	@pids=; fail=0; \
+	for b in $(BOARDS); do $(MAKE) -C host RAPI_BOARD=$$b rebuild & pids="$$pids $$!"; done; \
+	for p in $$pids; do wait $$p || fail=1; done; \
+	exit $$fail
+
 # Truth-gate: ask the filesystem, not the exit codes. An image that is
-# missing or empty fails here even if the build claimed success.
+# missing, empty, or does not carry the defaults block at offset 0x800 fails
+# here even if the build claimed success.
+#
+# What this cannot tell you is whether the image was built from the sources as
+# they now stand. That is a question about the build, not about the file, and
+# `make rebuild` is the only answer to it.
 verify:
 	@fail=0; \
 	for b in $(BOARDS); do \
@@ -84,10 +108,12 @@ verify:
 			rpi4) img=host/build/rpi4/$(IMAGE_rpi4) ;; \
 			rpi5) img=host/build/rpi5/$(IMAGE_rpi5) ;; \
 		esac; \
-		if [ -s "$$img" ]; then \
-			echo "  OK    $$img ($$(wc -c < $$img | tr -d ' ') bytes)"; \
-		else \
+		if [ ! -s "$$img" ]; then \
 			echo "  FAIL  $$img missing or empty"; fail=1; \
+		elif [ "`dd if=$$img bs=4 skip=512 count=1 2>/dev/null`" != "PM8D" ]; then \
+			echo "  FAIL  $$img has no defaults block at 0x800"; fail=1; \
+		else \
+			echo "  OK    $$img ($$(wc -c < $$img | tr -d ' ') bytes, defaults block present)"; \
 		fi; \
 	done; \
 	exit $$fail
