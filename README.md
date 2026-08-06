@@ -51,9 +51,8 @@ not what has been observed.
 
 - Video: the full 320x240 paletted software rendering path, converted to
   32-bit once per frame and scaled to the display.
-- Sound: circle-libsdl2 implements SDL's own audio API, and TyrQuake's sound
-  driver is written against it. This port adds the three older single-device
-  audio calls that the driver uses and the library does not carry.
+- Sound: circle-libsdl2 implements SDL's own audio API, including the older
+  single-device calls TyrQuake's sound driver is written against.
 - Keyboard and mouse: USB keyboards and mice through Circle's HID drivers.
   circle-libsdl2 implements SDL's relative mouse mode and reports movement as
   it happens, which is what mouse-look needs. That part of the library is
@@ -197,7 +196,7 @@ work and a slowed processor drops frames.
 |---|---|
 | `kernel.cpp`, `kernel.h`, `main.cpp` | The Circle kernel: brings up the serial console, the SD card and the filesystem, elects the three cores, and calls the game. |
 | `circle_syscalls.cpp` | Puts the SD card underneath the C library in a way that is legal from a core that does not own the hardware. |
-| `circle_stubs.cpp` | The pixel-format object, the older audio calls and two C library functions that the game reaches and the layers below do not provide. |
+| `circle_stubs.cpp` | The two C library functions the game reaches that newlib on this board does not provide. |
 | `net_ban.c` | One function upstream's no-network driver leaves undefined. The file explains itself. |
 | `include/` | Headers the game's build reaches for and the C library on this board does not have, plus the window-icon header upstream's own build generates rather than ships. Each one says in itself why it is there. |
 | `config.txt`, `cmdline.txt` | Firmware boot configuration, one file for all three boards. |
