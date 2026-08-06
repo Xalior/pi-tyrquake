@@ -1,0 +1,6 @@
+[submodule "tyrquake"]
+	path = tyrquake
+	url = https://github.com/sezero/tyrquake.git
+[submodule "circle-libsdl2"]
+	path = circle-libsdl2
+	url = https://github.com/Xalior/circle-libsdl2.git
