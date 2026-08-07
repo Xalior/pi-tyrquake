@@ -23,10 +23,6 @@
 //            starts a core.
 //   core 3   parked.
 //
-// `rapi-split=0` in cmdline.txt collapses all of this back onto core 0, so
-// the split and the single-core path can be measured against each other on
-// one binary.
-//
 #ifndef _kernel_h
 #define _kernel_h
 
@@ -96,11 +92,10 @@ private:
     // software: every pixel on the screen is the processor's work, so the
     // frame rate follows the clock rate directly.
     CSDL2CircleHardware m_SDL2Hardware;
-    CSplitCores         m_Cores;
 
     // Declared last so the cores are the last thing started and the first
     // thing that has a fully built world to run in.
-    boolean             m_bSplit;        // cmdline rapi-split (default on)
+    CSplitCores         m_Cores;
 };
 
 #endif

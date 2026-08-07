@@ -180,11 +180,10 @@ work and a slowed processor drops frames.
 
 ### Boot options
 
-`cmdline.txt` also accepts three switches this kernel reads:
+`cmdline.txt` also accepts switches this kernel reads:
 
 | Option | Effect |
 |---|---|
-| `rapi-split=0` | Run everything on core 0 instead of splitting the work across three. Slower, and useful for comparing the two against one image. |
 | `rapi-perf=N` | Print a performance line to the serial console every N seconds. |
 | `rapi-debug-uart` | Accept key presses from the serial console, so a board with no keyboard attached can still be driven. |
 
