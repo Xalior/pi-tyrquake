@@ -57,7 +57,15 @@ endif
 # The board's circle-stdlib world. A `make deps` that has not been run, or has
 # not finished, leaves this file absent; make would then report that it has no
 # rule to make a Config.mk, which describes the symptom and not the cause.
-WORLD = $(SHIM)/circle-stdlib-$(RAPI_BOARD)
+# WHERE THE BUILT WORLD COMES FROM.
+#
+# The default is this game's own nested shim, so a clone of this repository
+# alone builds and uses its own worlds and nothing needs setting. A parent
+# that keeps ONE set of built worlds for several games — they are gigabytes
+# each, and identical when the pin and the configuration match — points
+# CIRCLE_WORLDS at them.
+CIRCLE_WORLDS ?= $(SHIM)
+WORLD = $(CIRCLE_WORLDS)/circle-stdlib-$(RAPI_BOARD)
 ifeq ($(wildcard $(WORLD)/Config.mk),)
 $(error the $(RAPI_BOARD) circle-stdlib world is not configured ($(WORLD)/Config.mk is missing) — run 'make deps-$(RAPI_BOARD)' at the repository root)
 endif
