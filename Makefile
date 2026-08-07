@@ -57,18 +57,9 @@ deps:
 # pattern rule: these targets are phony, and make does not apply pattern rules
 # to phony targets — it would quietly answer "nothing to be done" and leave
 # the world unbuilt.
-# Quake's renderer allocates its edge and surface arrays with alloca on every
-# frame it draws, and upstream says it wants at least a megabyte of stack to
-# do that — a figure written for 32-bit pointers, so the same arrays are
-# around 1.7 times larger here. Circle's default 128 KB a core is not enough
-# for the first frame of real geometry, and there is no guard page to catch
-# the overrun: the core simply writes into the next core's stack.
-CIRCLE_KERNEL_STACK_SIZE = 0x200000
-
 $(addprefix deps-,$(BOARDS)): deps-%:
 	+@$(NOT_DRY_RUN)
-	$(MAKE) -C circle-libsdl2 world BOARD=$* \
-		CIRCLE_KERNEL_STACK_SIZE=$(CIRCLE_KERNEL_STACK_SIZE)
+	$(MAKE) -C circle-libsdl2 world BOARD=$*
 	$(MAKE) -C circle-libsdl2 libSDL2-$*.a BOARD=$*
 
 $(BOARDS): check-toolchain
