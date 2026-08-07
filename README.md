@@ -74,31 +74,54 @@ not what has been observed.
   operating system there is nothing to return to. The board stops. Turn it off
   and on again to play again.
 
-## What you need to supply
+## Game data, and `make media`
 
 **This repository contains no game data, and cannot.** Quake's levels,
 graphics and sounds live in PAK files that are not part of the engine and are
 not this project's to distribute. Building the images does not download one,
 and neither does writing a card.
 
+Two directories, and the difference between them matters:
+
+| | |
+|---|---|
+| `media/` | Where game data lives on your machine. `make media` downloads into it; you can also copy your own files into it by hand. It is never committed and never shipped. |
+| `build/sd-card/` | What `make card` stages. It **copies from `media/`** and fetches nothing. |
+
+`make card` works whether or not `media/` has anything in it. A card built
+with no data is a real card — it just says plainly which files are missing.
+
 You need at least `id1/pak0.pak`.
 
 | File | What it is |
 |---|---|
 | `id1/pak0.pak` | The Quake shareware episode, *Dimension of the Doomed*. Freely redistributable by id Software's own terms, and a complete playable game on its own. |
-| `id1/pak1.pak` | The rest of registered Quake — the other three episodes. A commercial product. |
+| `id1/pak1.pak` | The rest of registered Quake — the other three episodes. |
 
-Where to get them legitimately:
+### `make media` — the two things that can be downloaded
 
-- **The shareware `pak0.pak`** is distributed by id Software for free copying.
-  It travels inside the original shareware release, which is archived at the
-  Internet Archive and mirrored by many Quake community sites.
-- **`pak1.pak` is a commercial product.** Use the copy inside a version you
-  own — the Steam and GOG releases both install the PAK files as plain files,
-  as does the original CD, and copying them to the card is all that is needed.
+```sh
+make media
+```
 
-Do not use a copy obtained by working around a licence, a paywall or a
-copy-protection system. There is a free and complete option above.
+It downloads both files, with `curl`, from public Internet Archive items:
+
+- **`pak0.pak`** — the shareware episode, distributed by id Software for free
+  copying. It travels inside the original shareware release, which the
+  Internet Archive holds as a standalone PAK.
+- **`pak1.pak`** — the rest of registered Quake, from an Internet Archive item
+  hosting the retail data files.
+
+What arrives is checked against the MD5 each source publishes in its own item
+metadata, independently of this download, and against the SHA256 computed from
+the file this project fetched. If either does not match, the target stops and
+says so rather than handing you a file to put on a card. A `provenance.txt` is
+written beside them recording the URLs, the date, the licence and the hashes.
+Running it again re-verifies what is already there instead of downloading it
+a second time.
+
+Read this section before you run it. It is your machine and your
+responsibility.
 
 ## Building
 
@@ -151,15 +174,14 @@ make card
 
 That stages the card into `build/sd-card/` for you to copy onto FAT32 media:
 the three kernel images under the names each board's firmware looks for, the
-boot configuration, and an empty `tyrquake/id1/` for the game data.
+boot configuration, and whatever game data `media/` holds, copied into
+`tyrquake/id1/`. It never downloads anything itself — see *Game data, and
+`make media`* above — and it names on the console whatever it does not find.
 
-Two things are not staged and have to be added by hand:
-
-1. **The Raspberry Pi firmware files** — `bootcode.bin`, `start*.elf`,
-   `fixup*.dat` and, for the Pi 4, `armstub8-rpi4.bin`. Take them from a
-   Raspberry Pi OS card or from the
-   [firmware repository](https://github.com/raspberrypi/firmware).
-2. **`pak0.pak`**, in `tyrquake/id1/`. See above.
+One thing is not staged and has to be added by hand: **the Raspberry Pi
+firmware files** — `bootcode.bin`, `start*.elf`, `fixup*.dat` and, for the
+Pi 4, `armstub8-rpi4.bin`. Take them from a Raspberry Pi OS card or from the
+[firmware repository](https://github.com/raspberrypi/firmware).
 
 Everything this game reads or writes stays inside `tyrquake/` on the card. One
 card can carry several games, and a game that wrote its `config.cfg` into the
@@ -177,51 +199,6 @@ pin changes what happens at that temperature: the fan is switched on and the
 processor is left at full speed, instead of being slowed down. That is what
 this game wants more than most, because every pixel it draws is processor
 work and a slowed processor drops frames.
-
-### Boot options
-
-`cmdline.txt` also accepts switches this kernel reads:
-
-| Option | Effect |
-|---|---|
-| `rapi-perf=N` | Print a performance line to the serial console every N seconds. |
-| `rapi-debug-uart` | Accept key presses from the serial console, so a board with no keyboard attached can still be driven. |
-
-## How the layers fit
-
-`host/` holds everything this repository adds, and nothing else:
-
-| File | What it is |
-|---|---|
-| `kernel.cpp`, `kernel.h`, `main.cpp` | The Circle kernel: brings up the serial console, the SD card and the filesystem, elects the three cores, and calls the game. |
-| `circle_syscalls.cpp` | Puts the SD card underneath the C library in a way that is legal from a core that does not own the hardware. |
-| `circle_stubs.cpp` | The two C library functions the game reaches that newlib on this board does not provide. |
-| `net_ban.c` | One function upstream's no-network driver leaves undefined. The file explains itself. |
-| `include/` | Headers the game's build reaches for and the C library on this board does not have, plus the window-icon header upstream's own build generates rather than ships. Each one says in itself why it is there. |
-| `config.txt`, `cmdline.txt` | Firmware boot configuration, one file for all three boards. |
-
-The game's entry point is renamed by the preprocessor for one file, so that
-`main` belongs to the Circle kernel and the game is a function it calls. That
-is the whole of the intrusion into upstream: no patch, no fork, no edit.
-
-### Where the game's own build options are set
-
-TyrQuake is configured entirely through options its own Makefile already has.
-This port sets them in `host/Makefile` and changes nothing in the game:
-
-- Which of the five programs is built, and which video, input, sound and
-  network drivers go into it. Every source file in the build is one upstream
-  chose for itself in one configuration or another.
-- `QBASEDIR`, the directory the game looks for `id1/` under. That is the one
-  place this port's card layout reaches the game.
-
-### About the upstream submodule
-
-The submodule points at [a mirror of TyrQuake on
-GitHub](https://github.com/sezero/tyrquake). The project's own home is a git
-server at `disenchant.net`, and the mirror is commit-for-commit identical to
-it; GitHub is used here so that `git clone --recursive` works for anyone,
-including a continuous-integration runner.
 
 ## License
 
