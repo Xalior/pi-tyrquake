@@ -211,17 +211,23 @@ boolean CKernel::Initialize(void)
     if (bOK) m_Timer.SetTime(BuildEpoch(), FALSE /* universal */);
     if (bOK) bOK = m_EMMC.Initialize();
 
-    // Slide the disk counter in between the card and everything that uses it,
+    // Slide the disk cache in between the card and everything that uses it,
     // after the card has registered its name and before the first mount reads
     // a sector. FatFs finds its device by name and holds no pointer to the
     // card, so taking the name over is the whole of the interposition — no
-    // caller changes and nothing above this line knows. It counts and passes
-    // through; it caches nothing. Not fatal if it fails: the name still
-    // resolves to the card itself and the game runs uninstrumented.
-    if (bOK && !m_DiskStats.Install())
+    // caller changes and nothing above this line knows.
+    //
+    // It has no memory yet. The pool is named in the defaults block, which is
+    // not read until Run(), so the mount and the standard library's own first
+    // reads happen through an empty cache and reach the card. They are a
+    // handful of one-off reads and the counting covers them either way.
+    //
+    // Not fatal if it fails: the name still resolves to the card itself and
+    // the game runs uncached and unmeasured.
+    if (bOK && !m_DiskCache.Install())
         m_Logger.Write(From, LogWarning,
-                       "disk instrumentation did not install — the card is "
-                       "unwrapped and no disk figures will be reported");
+                       "disk cache did not install — the card is unwrapped, "
+                       "uncached, and no disk figures will be reported");
 
     if (bOK) bOK = (f_mount(&m_FileSystem, "SD:", 1) == FR_OK);
     if (bOK) bOK = m_Console.Initialize();
@@ -325,6 +331,12 @@ TShutdownMode CKernel::Run(void)
                        "could not enter " RAPI_GAME_DIR
                        " — relative paths will resolve at the card root");
 
+    // Give the disk cache its pool, now that the block has been read and
+    // --rapi-cache has had its say. Before the game runs, so the one
+    // allocation it ever makes happens while the heap is still empty, and
+    // every read the game makes meets a cache that is already there.
+    m_DiskCache.Configure(rapi_cache_kb);
+
     // Serial key injection, if the block asked for it.
     if (rapi_debug_uart)
     {
@@ -359,14 +371,14 @@ TShutdownMode CKernel::Run(void)
     // on. Poll() costs one clock read until its five seconds are up.
     while (!s_AppDone.load(std::memory_order_acquire))
     {
-        m_DiskStats.Poll();
+        m_DiskCache.Poll();
         m_Scheduler.Yield();
     }
     res = s_AppResult;
 
     // One last report before parking, so a run that ends quickly still says
     // what it did.
-    m_DiskStats.Report();
+    m_DiskCache.Report();
 
     // Park instead of rebooting. A reboot stops the clocks with the UART
     // FIFO still draining, so the exit line reaches the bench truncated —

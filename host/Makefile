@@ -91,8 +91,19 @@ TARGET = $(OBJDIR)/$(IMAGE)
 # The kernel wrapper, the syscall layer and this port's own SDL layer: C++,
 # and this project's own code.
 HOST_SRCS = main.cpp kernel.cpp defaults.cpp circle_syscalls.cpp \
-	circle_stubs.cpp diskstats.cpp
+	circle_stubs.cpp
 HOST_OBJS = $(addprefix $(OBJDIR)/,$(HOST_SRCS:.cpp=.o))
+
+# The SD card's read cache, which lives in circle-libsdl2 rather than here.
+#
+# It is not part of SDL and does not use it: it is Circle device-layer code
+# that wraps the card and is picked up by name, so FatFs and every file the
+# game opens go through it without knowing. It is kept in that repository
+# because that is where the shared pieces are today, and it is compiled
+# straight into this kernel — there is no library to link, and no other port
+# has to agree with this one about how it is built.
+DISKCACHE_DIR = $(SHIM)/circle-diskcache
+DISKCACHE_OBJ = $(OBJDIR)/diskcache.o
 
 # TyrQuake's source list for ONE of its five programs: `tyr-quake`, the
 # NetQuake client with the SOFTWARE renderer. Upstream's Makefile calls that
@@ -173,7 +184,7 @@ TYR_OBJS = $(addprefix $(OBJDIR)/tq/,$(TYR_SRCS:.c=.o))
 HOST_C_SRCS = net_ban.c
 HOST_C_OBJS = $(addprefix $(OBJDIR)/,$(HOST_C_SRCS:.c=.o))
 
-OBJS = $(HOST_OBJS) $(HOST_C_OBJS) $(TYR_OBJS)
+OBJS = $(HOST_OBJS) $(HOST_C_OBJS) $(DISKCACHE_OBJ) $(TYR_OBJS)
 
 STANDARD = -std=gnu++17
 
@@ -296,6 +307,7 @@ TYR_DEFINE = -DNQ_HACK -DNDEBUG -DELF -D_DEFAULT_SOURCE \
 # includes, and it comes before the C library's own directory because one of
 # them has to be found instead of the C library's.
 INCLUDE := -I $(SHIM)/include -I $(SHIM)/include/SDL2 \
+	-I $(DISKCACHE_DIR) \
 	-iquote $(TYR)/include -iquote $(TYR)/external -iquote $(TYR)/NQ \
 	-I $(CURDIR)/include \
 	$(CIRCLE_STDLIB_INCLUDES) $(INCLUDE)
@@ -365,6 +377,13 @@ LDFLAGS += $(addprefix --wrap=,$(WRAPPED_SYSCALLS))
 # This project's own objects, board-scoped. These more-specific rules win
 # over Rules.mk's in-place %.o/%.d, so nothing is written beside the source.
 $(OBJDIR)/%.o: %.cpp | $(OBJDIR)
+	@echo "  CPP   $@"
+	@$(CPP) $(CPPFLAGS) $(DEPFLAGS) -c -o $@ $<
+
+# The disk cache, which lives outside this directory. Its own rule because
+# the pattern rule above only reaches sources beside this makefile, and its
+# object goes in this board's tree like every other.
+$(DISKCACHE_OBJ): $(DISKCACHE_DIR)/diskcache.cpp | $(OBJDIR)
 	@echo "  CPP   $@"
 	@$(CPP) $(CPPFLAGS) $(DEPFLAGS) -c -o $@ $<
 
