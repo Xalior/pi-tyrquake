@@ -91,7 +91,7 @@ TARGET = $(OBJDIR)/$(IMAGE)
 # The kernel wrapper, the syscall layer and this port's own SDL layer: C++,
 # and this project's own code.
 HOST_SRCS = main.cpp kernel.cpp defaults.cpp circle_syscalls.cpp \
-	circle_stubs.cpp
+	circle_stubs.cpp diskstats.cpp
 HOST_OBJS = $(addprefix $(OBJDIR)/,$(HOST_SRCS:.cpp=.o))
 
 # TyrQuake's source list for ONE of its five programs: `tyr-quake`, the

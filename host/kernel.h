@@ -52,6 +52,7 @@
 #include <SDCard/emmc.h>
 #include <fatfs/ff.h>
 #include <SDL2/SDL_circle.h>
+#include "diskstats.h"
 
 enum TShutdownMode
 {
@@ -90,6 +91,12 @@ private:
     CLogger             m_Logger;
     CScheduler          m_Scheduler;
     CEMMCDevice         m_EMMC;
+    // Counts every sector that goes to or from the card, and caches nothing.
+    // It takes the card's name over in the device name service once the card
+    // is up, so FatFs — and through it every file the game opens — reaches
+    // the card through it without anything above knowing. Always on in this
+    // port: the numbers are what a read-ahead cache will be designed from.
+    CDiskStatsDevice    m_DiskStats;
     FATFS               m_FileSystem;
     CConsole            m_Console;
     // The USB host controller, with plug-and-play on so a keyboard or a pad

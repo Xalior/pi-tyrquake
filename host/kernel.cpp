@@ -210,6 +210,19 @@ boolean CKernel::Initialize(void)
     // is plausible. The game stamps its save games with it.
     if (bOK) m_Timer.SetTime(BuildEpoch(), FALSE /* universal */);
     if (bOK) bOK = m_EMMC.Initialize();
+
+    // Slide the disk counter in between the card and everything that uses it,
+    // after the card has registered its name and before the first mount reads
+    // a sector. FatFs finds its device by name and holds no pointer to the
+    // card, so taking the name over is the whole of the interposition — no
+    // caller changes and nothing above this line knows. It counts and passes
+    // through; it caches nothing. Not fatal if it fails: the name still
+    // resolves to the card itself and the game runs uninstrumented.
+    if (bOK && !m_DiskStats.Install())
+        m_Logger.Write(From, LogWarning,
+                       "disk instrumentation did not install — the card is "
+                       "unwrapped and no disk figures will be reported");
+
     if (bOK) bOK = (f_mount(&m_FileSystem, "SD:", 1) == FR_OK);
     if (bOK) bOK = m_Console.Initialize();
     if (bOK) CGlueStdioInit(m_Console);
@@ -339,9 +352,21 @@ TShutdownMode CKernel::Run(void)
     // here: the servo task is what answers the application core, feeds
     // the sound device and pumps USB, and it only runs when this loop
     // gives it the core.
+    //
+    // The disk report rides here too. It is printed from this loop and
+    // nowhere else, deliberately: writing it from inside a read would put
+    // serial output in the middle of a call the application core is waiting
+    // on. Poll() costs one clock read until its five seconds are up.
     while (!s_AppDone.load(std::memory_order_acquire))
+    {
+        m_DiskStats.Poll();
         m_Scheduler.Yield();
+    }
     res = s_AppResult;
+
+    // One last report before parking, so a run that ends quickly still says
+    // what it did.
+    m_DiskStats.Report();
 
     // Park instead of rebooting. A reboot stops the clocks with the UART
     // FIFO still draining, so the exit line reaches the bench truncated —
