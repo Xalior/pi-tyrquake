@@ -31,48 +31,29 @@ with no OpenGL. The two OpenGL programs need a graphics driver that does not
 exist here, and the two QuakeWorld programs are for internet play and need a
 network stack that does not either.
 
-Three processor cores are given separate work:
+The game draws at 320x240, the size Quake's software renderer has always
+drawn at, and the picture is scaled once onto whatever your screen actually
+is.
 
-- **Core 0** owns the hardware. Circle's world lives here — interrupts, USB,
-  the SD card, sound — and no other core touches a device.
-- **Core 1** runs the game and nothing else. This is where the whole software
-  renderer runs, so this core is what decides the frame rate.
-- **Core 2** puts finished frames on the screen. The game draws at 320x240 and
-  never learns the display's size; the picture is scaled once, at the end,
-  onto whatever the screen is really showing.
+## What works
 
-## State of this port
+Quake plays.
 
-This is an early port. It builds and links completely, for all three boards,
-and it has not yet been run on hardware. The list below is what the code does,
-not what has been observed.
+- **Picture.** The full 320x240 software rendering, scaled to your screen.
+  Every pixel is drawn by the processor, as Quake always did.
+- **Sound.** The effects.
+- **Keyboard and mouse.** Both, including mouse-look.
+- **Saved games and settings.** Written back to the SD card, so they survive
+  a power cut.
 
-**Present:**
+Three things are missing, and one of them will surprise you:
 
-- Video: the full 320x240 paletted software rendering path, converted to
-  32-bit once per frame and scaled to the display.
-- Sound: circle-libsdl2 implements SDL's own audio API, including the older
-  single-device calls TyrQuake's sound driver is written against.
-- Keyboard and mouse: USB keyboards and mice through Circle's HID drivers.
-  circle-libsdl2 implements SDL's relative mouse mode and reports movement as
-  it happens, which is what mouse-look needs. That part of the library is
-  newer than its own changelog and nothing in this port has confirmed it on
-  hardware yet.
-- Files: the PAK files, the configuration and the save games, read from and
-  written to the SD card.
-
-**Absent, and why:**
-
-- **Multiplayer.** Quake's network play needs BSD sockets, and circle-libsdl2
-  has no network stack behind it. The build selects upstream's own
-  loopback-only network driver, which is the driver Quake has always used for
-  a single-player game.
-- **CD music.** Quake's soundtrack was audio tracks on the game CD. There is
-  no optical drive on a Raspberry Pi, so the build selects upstream's own
-  no-CD driver.
-- **Quitting.** Choosing quit ends the program, and on a board with no
-  operating system there is nothing to return to. The board stops. Turn it off
-  and on again to play again.
+- **Multiplayer.** Network play is not built; this is single player.
+- **The CD soundtrack.** Quake's music was audio tracks on the game disc, and
+  there is no disc.
+- **Quitting.** Choosing quit ends the game, and there is no desktop to
+  return to — the board simply stops. Turn it off and on again to play
+  again.
 
 ## Game data, and `make media`
 
@@ -187,18 +168,19 @@ Everything this game reads or writes stays inside `tyrquake/` on the card. One
 card can carry several games, and a game that wrote its `config.cfg` into the
 card's root would overwrite another game's.
 
-### The thermal settings in `cmdline.txt`
+### Keeping it cool
 
-One card boots any of the three boards, so all three read the same
-`cmdline.txt`. It carries `socmaxtemp=70`, the temperature in degrees Celsius
-at which the processor is slowed down to cool itself.
+The card carries `cmdline.txt`, which sets the temperature the board is
+allowed to reach and the pin its fan is on:
 
-If your board has a fan, add `gpiofanpin=` and the GPIO pin it is wired to —
-`gpiofanpin=45` is a Raspberry Pi 5 Case Fan or Active Cooler. Naming a fan
-pin changes what happens at that temperature: the fan is switched on and the
-processor is left at full speed, instead of being slowed down. That is what
-this game wants more than most, because every pixel it draws is processor
-work and a slowed processor drops frames.
+    socmaxtemp=70 gpiofanpin=45
+
+Pin 45 is the Raspberry Pi 5 Case Fan and Active Cooler. With a fan named,
+reaching 70°C switches the fan on and the processor keeps running at full
+speed. Without one it would be slowed down instead — and this game feels that
+more than most, because every pixel it draws is processor work.
+
+If your fan is wired somewhere else, change the pin number.
 
 ## License
 
