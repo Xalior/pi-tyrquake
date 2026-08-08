@@ -7,6 +7,11 @@ launcher, and nothing else running beside it.
 It builds for the Raspberry Pi 3, Pi 4 and Pi 5, all three from one source
 tree.
 
+![Quake running on a Raspberry Pi 5 with no operating system](docs/tyrquake-on-bare-metal.jpg)
+
+*Captured from the Pi 5's HDMI output. The board is running this image and
+nothing else — no kernel underneath it, no window system, no launcher.*
+
 ## What this is
 
 [TyrQuake](https://disenchant.net/tyrquake/) is a conservative, well
