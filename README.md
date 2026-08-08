@@ -187,11 +187,11 @@ more than most, because every pixel it draws is processor work.
 
 If your fan is wired somewhere else, change the pin number.
 
-The same file also sets the keyboard layout. Circle reads this at boot and defaults to US, but supports UK, German, Spanish, French, Italian or Dvorak keyboards. To use a different layout, add `keymap=` to the line:
+The same file also sets the keyboard layout. Circle reads this at boot and uses a German layout if the name is missing or not recognised. To use a different layout, add `keymap=` to the line:
 
-    keymap=uk
+    keymap=UK
 
-Valid values: `us` (default), `uk`, `de`, `es`, `fr`, `it`, `dv` (Dvorak). A card built by `make card` carries no preset layout — you add one when writing the card if your keyboard is not US.
+Valid values: `US`, `UK`, `DE`, `ES`, `FR`, `IT` and `DV` (Dvorak). Names are case-sensitive; an unrecognised or lowercase name falls back to German instead. A card built by `make card` carries no preset layout — you add one when writing the card if your keyboard is not US.
 
 ## License
 
