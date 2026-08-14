@@ -164,7 +164,6 @@ CKernel::CKernel(void)
       m_Timer(&m_Interrupt),
       m_Logger(m_Options.GetLogLevel(), &m_Timer),
       m_EMMC(&m_Interrupt, &m_Timer, &m_ActLED),
-      m_Console(&m_Serial, &m_Serial),    // stdio over the UART
       m_USB(&m_Interrupt, &m_Timer, TRUE /* plug-and-play */)
 {
     m_ActLED.Blink(3);
@@ -230,8 +229,6 @@ boolean CKernel::Initialize(void)
                        "uncached, and no disk figures will be reported");
 
     if (bOK) bOK = (f_mount(&m_FileSystem, "SD:", 1) == FR_OK);
-    if (bOK) bOK = m_Console.Initialize();
-    if (bOK) CGlueStdioInit(m_Console);
 
     // USB, here and not in the game's SDL_Init.
     //
