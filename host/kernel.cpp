@@ -54,34 +54,33 @@ static const char From[] = "tyrquake";
 // carries the finished picture to whatever the screen is really showing, in
 // one pass on the presentation core, so this number is not the screen's.
 //
-// The same pair is spelled twice, as numbers for the library and as text for
-// the game's own command line, and both come from one definition so they
-// cannot drift apart. They must agree: the game asks SDL for a fullscreen
-// mode of exactly this size, and the library offers exactly one mode.
+// It is stated to the library, as the virtual display this machine gives the
+// game, and to nobody else. The game is not told: it asks SDL what the
+// display is and sizes itself from the answer, which is how an SDL program
+// behaves everywhere.
 // ---------------------------------------------------------------------------
 #define RAPI_VID_WIDTH   320
 #define RAPI_VID_HEIGHT  240
-
-#define RAPI_STRINGIFY_(x) #x
-#define RAPI_STRINGIFY(x)  RAPI_STRINGIFY_(x)
 
 // The game's command line. These are the BAKED arguments; anything written
 // into the image's defaults block is appended to them before the game runs,
 // so a boot can add to this without the card or the build changing.
 //
-// -fullscreen with a size names the one video mode the library offers.
-// Without it TyrQuake starts in its built-in 640x480 windowed mode, which is
-// not a mode this display has.
+// Nothing here describes the display. There is no window manager on this
+// board, so a window is the whole screen whatever size it is: the library
+// takes the game's picture as its canvas and the presentation core scales
+// that onto the panel. "Windowed" and "fullscreen" therefore name the same
+// thing, and every size is a size this display can show. A baked -fullscreen
+// -width -height said otherwise and settled a resolution the game is
+// perfectly able to settle for itself.
 //
 // -mem is the heap the game allocates in one block at startup. Upstream's
 // default is 256MB, sized for a desktop; 64MB is far more than any Quake
-// level needs at this resolution, and it keeps the demand the same on all
-// three boards, including the Pi 3.
+// level needs here, and it keeps the demand the same on all three boards,
+// including the Pi 3. It is a fact about the machine rather than a choice
+// about the picture, which is why it stays.
 static const char *TyrQuakeArgv[] = {
     RAPI_GAME_DIR "/tyrquake",
-    "-fullscreen",
-    "-width",  RAPI_STRINGIFY(RAPI_VID_WIDTH),
-    "-height", RAPI_STRINGIFY(RAPI_VID_HEIGHT),
     "-mem",    "64",
 };
 
